@@ -308,36 +308,38 @@ and suggested fix. A job summary lists the findings and item counts. GitHub may
 limit displayed annotations; the job log retains the full list. Very large summaries
 are truncated with a pointer to that log.
 
-Example diagnostic:
+Example diagnostic (paths also appear in GitHub's plain job log):
 
 ```text
-[FC002] docs/courses/first-steps/milestones/observe-data/challenge.qmd:1
-Cannot read required file (ENOENT).
-Fix: Create this file as UTF-8 text and ensure it is readable.
+[FC002] Missing or unreadable source
+File: "docs/courses/first-steps/milestones/observe-data/challenge.qmd":1
+Problem: Missing milestone challenge (ENOENT).
+Fix: Create challenge.qmd with an ungraded task combining the milestone units,
+     instructions, and self-review guidance; list it in website.sidebar.
+Help: https://github.com/freecampus/freecampus-course-check/blob/main/TROUBLESHOOTING.md#fc002
 ```
 
-### Diagnostic reference
+### Troubleshoot a failed check
 
-| Code    | Meaning and typical correction                                                                  |
-| ------- | ----------------------------------------------------------------------------------------------- |
-| `FC000` | Invocation/runtime error: check inputs and permissions, or report the failure.                  |
-| `FC001` | Unsafe path or symlink: use regular source paths inside the selected checkout.                  |
-| `FC002` | Missing, unreadable, oversized, non-text file, or missing directory: create/fix the named path. |
-| `FC003` | Empty file or page body: add meaningful content.                                                |
-| `FC004` | Invalid YAML: fix syntax, mapping type, duplicate keys, tags, or aliases at the reported line.  |
-| `FC005` | Unclosed front matter: add a closing delimiter.                                                 |
-| `FC006` | Missing page title: add a YAML title or Markdown heading.                                       |
-| `FC007` | Invalid educational ID: use lowercase kebab-case.                                               |
-| `FC008` | Empty course/milestone/unit collection: add at least one complete child item.                   |
-| `FC009` | Missing website configuration: set website project type, title, and HTML format.                |
-| `FC010` | Invalid schema/kind or course count: use version 1 and the correct course/journey kind.         |
-| `FC011` | Legacy course-level `units/`: place units inside milestones and update links.                   |
-| `FC012` | No unit lesson: add a non-reserved `.qmd` directly in the unit.                                 |
-| `FC013` | Unsupported sidebar shape/path: list explicit, relative `.qmd` source links.                    |
-| `FC014` | Required page missing from sidebar: add it in the learner's sequence.                           |
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for the complete
+[error-code reference](TROUBLESHOOTING.md#rule-index), causes, fixes, YAML/QMD
+examples, and an ordered migration walkthrough. Every diagnostic links directly
+to its rule, both in the log/annotation and the job summary. The guide covers
+[missing files and collections](TROUBLESHOOTING.md#fc002),
+[schema and journey metadata](TROUBLESHOOTING.md#fc010),
+[legacy units without milestones](TROUBLESHOOTING.md#fc011), and
+[missing sidebar entries](TROUBLESHOOTING.md#fc014), among other errors.
 
-Checks accumulate independent failures, rather than stopping at the first missing
-file. Fixing a missing directory may resolve several related diagnostics.
+Checks accumulate independent failures. An unreadable collection produces a
+path-specific error without an extra message claiming it is empty. A readable
+but empty collection still fails. Error counts may therefore be lower than in
+`0.1.0` for the same invalid repository; the structural requirements and exit
+codes are unchanged. Counts describe discovered structure: a missing parent can
+leave existing lesson content uncounted.
+
+Help links point to the current guide on `main`. Workflows pinned to `0.1.0`
+will retain the older messages until updated to a release/commit containing
+these changes.
 
 ### What passing does not prove
 

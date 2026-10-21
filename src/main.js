@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { check, inside } from './check.js';
+import { diagnosticHelp, GUIDE_URL } from './diagnostics.js';
 
 const escapeData = (value) =>
   String(value)
@@ -18,24 +19,41 @@ const html = (value) =>
 
 export function report(result, root, env = process.env) {
   const valid = result.errors.length === 0;
+  const displayFile = (error) =>
+    env.GITHUB_ACTIONS === 'true'
+      ? path
+          .relative(
+            env.GITHUB_WORKSPACE || root,
+            path.resolve(root, error.file),
+          )
+          .split(path.sep)
+          .join('/')
+      : error.file;
   const summary = `FreeCampus structure: ${valid ? 'PASS' : 'FAIL'}; ${result.errors.length} error(s), ${result.counts.courses} course(s), ${result.counts.milestones} milestone(s), ${result.counts.units} unit(s), ${result.counts.lessons} lesson(s).`;
   console.log(summary);
   for (const error of result.errors) {
-    const message = `[${error.code}] ${error.message} Fix: ${error.fix}`;
+    const help = diagnosticHelp(error.code);
+    const title = `${error.code}: ${help.title}`;
+    const file = displayFile(error);
+    // GitHub's plain job log omits annotation file/title properties. Repeat both
+    // in the body so the downloaded log is useful without the annotation UI.
+    const message = [
+      `[${error.code}] ${help.title}`,
+      `File: ${JSON.stringify(file)}:${error.line}`,
+      `Problem: ${error.message}`,
+      `Fix: ${error.fix}`,
+      `Help: ${help.url}`,
+    ].join('\n');
     // Prefix local output and escape all annotation fields to prevent command injection.
     if (env.GITHUB_ACTIONS === 'true') {
-      const file = path
-        .relative(env.GITHUB_WORKSPACE || root, path.resolve(root, error.file))
-        .split(path.sep)
-        .join('/');
       console.log(
-        `::error file=${escapeProperty(file)},line=${error.line},title=${escapeProperty(error.code)}::${escapeData(message)}`,
+        `::error file=${escapeProperty(file)},line=${error.line},title=${escapeProperty(title)}::${escapeData(message)}`,
       );
-    } else
-      console.log(
-        `- ${JSON.stringify(error.file)}:${error.line} ${message.replace(/[\r\n]/g, ' ')}`,
-      );
+    } else console.log(`- ${message.replace(/\r\n|\r|\n/g, '\n  ')}`);
   }
+  const discoveryNote =
+    'Counts describe discovered structure. A missing parent directory can leave existing content uncounted; fix parent paths before interpreting zero counts.';
+  if (!valid) console.log(discoveryNote);
   if (env.GITHUB_OUTPUT)
     fs.appendFileSync(
       env.GITHUB_OUTPUT,
@@ -45,7 +63,8 @@ export function report(result, root, env = process.env) {
     // Keep summary well under GitHub's 1 MiB limit; the full diagnostic list is in the log.
     let details = '';
     for (const error of result.errors) {
-      const item = `<li><code>${html(error.code)} ${html(error.file)}:${error.line}</code>: ${html(error.message)}<br>Fix: ${html(error.fix)}</li>\n`;
+      const help = diagnosticHelp(error.code);
+      const item = `<li><strong>${html(error.code)}: ${html(help.title)}</strong><br><strong>File:</strong> <code>${html(displayFile(error))}:${error.line}</code><br><strong>Problem:</strong> ${html(error.message)}<br><strong>Fix:</strong> ${html(error.fix)}<br><a href="${html(help.url)}">Help and examples for ${html(error.code)}</a></li>\n`;
       if (Buffer.byteLength(details + item) > 800000) {
         details += '<li>Additional errors are listed in the job log.</li>';
         break;
@@ -54,7 +73,7 @@ export function report(result, root, env = process.env) {
     }
     fs.appendFileSync(
       env.GITHUB_STEP_SUMMARY,
-      `## FreeCampus course structure\n\n${summary}\n\n<ul>\n${details}</ul>\n`,
+      `## FreeCampus course structure\n\n${summary}\n\n${valid ? '' : `${discoveryNote}\n\n`}[Troubleshooting guide](${GUIDE_URL})\n\n<ul>\n${details}</ul>\n`,
     );
   }
   return valid ? 0 : 1;
