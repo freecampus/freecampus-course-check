@@ -344,3 +344,33 @@ test('bad CLI arguments and action paths outside checkout fail clearly', (t) => 
   assert.equal(result.status, 2);
   assert.match(result.stdout, /inside GITHUB_WORKSPACE/);
 });
+
+test('action inputs select the consumer checkout and its source directory', (t) => {
+  const dir = fixture(t);
+  fs.renameSync(path.join(dir, 'docs'), path.join(dir, 'content'));
+  const output = path.join(dir, 'action-output');
+  const summary = path.join(dir, 'action-summary');
+  const result = spawnSync(
+    process.execPath,
+    [path.join(repo, 'dist/index.cjs')],
+    {
+      cwd: repo,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GITHUB_ACTIONS: 'true',
+        GITHUB_WORKSPACE: path.dirname(dir),
+        INPUT_PATH: path.basename(dir),
+        'INPUT_CONTENT-DIR': 'content',
+        GITHUB_OUTPUT: output,
+        GITHUB_STEP_SUMMARY: summary,
+      },
+    },
+  );
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  assert.match(
+    fs.readFileSync(output, 'utf8'),
+    /valid=true\nerror-count=0\ncourse-count=1/,
+  );
+  assert.match(fs.readFileSync(summary, 'utf8'), /PASS/);
+});
