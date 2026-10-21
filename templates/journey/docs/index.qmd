@@ -1,0 +1,18 @@
+---
+title: "Learning with Data"
+---
+
+This freely accessible collection is a starting point for learning with everyday
+data. All activities are ungraded. You need no computer or account.
+
+This **journey** groups two courses in a suggested order:
+
+1. [First Steps](courses/first-steps/index.qmd): practice observing data; no prerequisites.
+2. [Next Steps](courses/next-steps/index.qmd): practice explaining findings; First Steps is recommended.
+
+The two courses are deliberately small authoring examples. Replace their practice
+with distinct learning outcomes and content before publishing a real journey.
+
+This starter has no progress controls. If browser-local tracking is added later,
+it will need a clear notice: progress stays in the same browser and profile on
+the same device, does not sync, and can be lost when browser data is cleared.

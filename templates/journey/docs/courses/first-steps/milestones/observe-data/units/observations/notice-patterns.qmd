@@ -1,0 +1,21 @@
+---
+title: "Notice Patterns"
+---
+
+## Observe before explaining
+
+Suppose three people arrive at a library at 09:00, 09:05, and 09:05.
+Two arrivals have the same recorded time. That is an observation. Saying that
+the two people travelled together would be an explanation that needs more evidence.
+
+## Check your understanding
+
+Which statement is supported by the recorded times: two people arrived at 09:05,
+or two people are friends? Explain your choice before opening the feedback.
+
+::: {.callout-tip collapse="true" title="Feedback"}
+Two people arrived at 09:05. The arrival times do not tell us whether they are friends.
+:::
+
+Try writing one observation and one possible explanation for something you notice
+nearby. You can do this on paper or your phone.

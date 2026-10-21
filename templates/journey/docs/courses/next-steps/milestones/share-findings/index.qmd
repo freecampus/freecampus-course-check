@@ -1,0 +1,12 @@
+---
+title: "Share Findings"
+---
+
+## Your goal
+
+Produce a short observation note that another person can understand.
+
+Work through [the explanations unit](units/explanations/index.qmd), including its unit
+challenge, then try [the milestone challenge](challenge.qmd).
+
+You need no external tools. Allow about 30 minutes for this milestone.

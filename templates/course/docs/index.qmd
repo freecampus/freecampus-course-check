@@ -1,0 +1,12 @@
+---
+title: "First Steps"
+---
+
+This freely accessible collection is a starting point for learning with everyday
+data. All activities are ungraded. You need no computer or account.
+
+Begin with [First Steps](courses/first-steps/index.qmd).
+
+This starter has no progress controls. If browser-local tracking is added later,
+it will need a clear notice: progress stays in the same browser and profile on
+the same device, does not sync, and can be lost when browser data is cleared.
