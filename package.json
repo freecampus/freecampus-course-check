@@ -9,8 +9,8 @@
     "test": "node --test",
     "check:templates": "node dist/index.cjs templates/course && node dist/index.cjs templates/journey",
     "verify": "npm run format:check && npm test && npm run build && npm run check:templates",
-    "format": "prettier --write README.md action.yml package.json package-lock.json src scripts tests .github",
-    "format:check": "prettier --check README.md action.yml package.json package-lock.json src scripts tests .github"
+    "format": "prettier --write README.md TROUBLESHOOTING.md action.yml package.json package-lock.json src scripts tests .github",
+    "format:check": "prettier --check README.md TROUBLESHOOTING.md action.yml package.json package-lock.json src scripts tests .github"
   },
   "engines": {
     "node": ">=24"

@@ -7370,6 +7370,22 @@ var slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 var mapping = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 var nonempty = (value) => typeof value === "string" && value.trim().length > 0;
 var slash = (value) => value.split(import_node_path.default.sep).join("/");
+var describe = (value) => {
+  if (value === void 0) return "missing";
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "a list";
+  if (typeof value === "object") return "a mapping";
+  return typeof value === "string" ? JSON.stringify(value) : String(value);
+};
+var pageFixes = {
+  "website home": "Create index.qmd with a title and an introduction linking to the course(s), then list it in website.sidebar.",
+  "course overview": "Create index.qmd with the course audience, prerequisites, outcomes, and milestone sequence; list it in website.sidebar.",
+  "milestone overview": "Create index.qmd explaining the milestone outcome and unit sequence; list it in website.sidebar.",
+  "milestone challenge": "Create challenge.qmd with an ungraded task combining the milestone units, instructions, and self-review guidance; list it in website.sidebar.",
+  "unit overview": "Create index.qmd with the unit outcome and lesson sequence; list it in website.sidebar.",
+  "unit challenge": "Create challenge.qmd with an ungraded task combining the unit lessons, instructions, and self-review guidance; list it in website.sidebar.",
+  lesson: "Create this .qmd lesson with a title, explanation, practice, and feedback; list it in website.sidebar."
+};
 var inside = (parent, child) => {
   const relative = import_node_path.default.relative(parent, child);
   return relative === "" || !relative.startsWith(`..${import_node_path.default.sep}`) && relative !== ".." && !import_node_path.default.isAbsolute(relative);
@@ -7426,7 +7442,25 @@ function check(root, contentDir = "docs") {
     }
     return true;
   }
-  function read(file) {
+  function readFailure(error, file, label, missingFix) {
+    let message = `Cannot read ${label} (${error.code || "unknown error"}).`;
+    let fix = "Check this path and file permissions, then rerun the action.";
+    if (error.code === "ENOENT") {
+      message = `Missing ${label} (ENOENT).`;
+      fix = missingFix;
+    } else if (error.code === "ENOTDIR") {
+      message = `Cannot read ${label}: an expected directory is a file (ENOTDIR).`;
+      fix = "Check this path and each parent component; replace the conflicting file with the required directory.";
+    } else if (error.code === "EACCES" || error.code === "EPERM") {
+      message = `Access denied while reading ${label} (${error.code}).`;
+      fix = "Allow the runner to read this source and traverse its parent directories. Do not replace existing content.";
+    } else if (error.code === "ERR_ENCODING_INVALID_ENCODED_DATA") {
+      message = `The ${label} is not valid UTF-8 text.`;
+      fix = "Save this source as UTF-8 text; keep binary assets in separate files.";
+    }
+    add("FC002", file, message, fix);
+  }
+  function read(file, label = "required source file", missingFix = "Create this file as UTF-8 text and ensure it is readable.") {
     if (!safe(file)) return null;
     try {
       const stat = import_node_fs.default.statSync(file);
@@ -7434,7 +7468,7 @@ function check(root, contentDir = "docs") {
         add(
           "FC002",
           file,
-          "Expected a regular text file.",
+          `The ${label} must be a regular UTF-8 text file; this path is not a file.`,
           "Replace this path with the required file."
         );
         return null;
@@ -7458,12 +7492,7 @@ function check(root, contentDir = "docs") {
         );
       return text;
     } catch (error) {
-      add(
-        "FC002",
-        file,
-        `Cannot read required file (${error.code || "invalid UTF-8"}).`,
-        "Create this file as UTF-8 text and ensure it is readable."
-      );
+      readFailure(error, file, label, missingFix);
       return null;
     }
   }
@@ -7506,11 +7535,15 @@ function check(root, contentDir = "docs") {
       return null;
     }
   }
-  function page(file) {
+  function page(file, role = "sidebar page") {
     requiredPages.add(file);
     if (checkedPages.has(file)) return;
     checkedPages.add(file);
-    const text = read(file);
+    const text = read(
+      file,
+      role,
+      pageFixes[role] || "Create the .qmd page named by this sidebar entry, or correct/remove the entry if it is a typo. Paths are relative to the Quarto source directory."
+    );
     if (text === null) return;
     const lines = text.replace(/\r\n/g, "\n").split("\n");
     let body = text;
@@ -7549,23 +7582,28 @@ function check(root, contentDir = "docs") {
       );
     }
   }
-  function entries(dir) {
-    if (!safe(dir)) return [];
+  function entries(dir, label = "source directory", missingFix = "Create this directory and add the required content.") {
+    if (!safe(dir)) return null;
     try {
       return import_node_fs.default.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, "en"));
     } catch (error) {
-      add(
-        "FC002",
-        dir,
-        `Cannot read required directory (${error.code}).`,
-        "Create this directory and add the required content."
-      );
-      return [];
+      readFailure(error, dir, label, missingFix);
+      return null;
     }
   }
   function children(dir, kind) {
     const result = [];
-    for (const entry of entries(dir)) {
+    const owner = kind === "course" ? "the Quarto project" : `${kind === "milestone" ? "course" : "milestone"} ${JSON.stringify(import_node_path.default.basename(import_node_path.default.dirname(dir)))}`;
+    const example = `${slash(import_node_path.default.relative(root, dir))}/<${kind}-id>/`;
+    const contents = {
+      course: "index.qmd and milestones/<milestone-id>/ with its overview, challenge, and units",
+      milestone: "index.qmd, challenge.qmd, and units/<unit-id>/ with an overview, lessons, and unit challenge",
+      unit: "index.qmd, at least one lesson .qmd, and challenge.qmd"
+    }[kind];
+    const fix = `Create ${example} containing ${contents}. Add the QMD pages to website.sidebar. Do not add empty placeholder folders.`;
+    const listing = entries(dir, `${kind} collection for ${owner}`, fix);
+    if (listing === null) return [];
+    for (const entry of listing) {
       if (entry.name.startsWith(".") || entry.name.startsWith("_")) continue;
       const file = import_node_path.default.join(dir, entry.name);
       if (entry.isSymbolicLink()) {
@@ -7586,8 +7624,8 @@ function check(root, contentDir = "docs") {
       add(
         "FC008",
         dir,
-        `Expected at least one ${kind} directory; found none.`,
-        `Add a ${kind} with index.qmd and its required child content. Underscore and dot directories are ignored.`
+        `No ${kind} directories were found for ${owner}; at least one is required.`,
+        `${fix} Dot/underscore directories and loose files do not count as ${kind} directories.`
       );
     return result;
   }
@@ -7610,28 +7648,40 @@ function check(root, contentDir = "docs") {
     );
     return { errors, counts };
   }
-  read(import_node_path.default.join(root, "README.md"));
+  read(
+    import_node_path.default.join(root, "README.md"),
+    "repository README",
+    "Create README.md with the course/journey overview, setup instructions, contribution guidance, and license details."
+  );
   const license = ["LICENSE", "LICENSE.md", "LICENSE.txt"].find(
     (name) => import_node_fs.default.existsSync(import_node_path.default.join(root, name))
   );
-  read(import_node_path.default.join(root, license || "LICENSE"));
+  read(
+    import_node_path.default.join(root, license || "LICENSE"),
+    "license notice",
+    "Create LICENSE, LICENSE.md, or LICENSE.txt with appropriate licensing terms and preserve required contributor notices."
+  );
   if (!safe(content)) return { errors, counts };
   const configFile = import_node_path.default.join(content, "_quarto.yml");
-  const configText = read(configFile);
+  const configText = read(
+    configFile,
+    "Quarto project configuration",
+    "Create _quarto.yml in the selected content-dir with project.type, website.title, format, and freecampus metadata. See the configuration example in the guide."
+  );
   const config = configText === null ? null : yaml(configText, configFile);
   if (config) {
     if (config.project?.type !== "website")
       add(
         "FC009",
         configFile,
-        "project.type must be website for this template.",
+        `project.type must be website; found ${describe(config.project?.type)}.`,
         "Use project: { type: website }. Book/PDF profiles may be added separately."
       );
     if (!nonempty(config.website?.title))
       add(
         "FC009",
         configFile,
-        "website.title is required.",
+        `website.title must be a nonempty string; found ${describe(config.website?.title)}.`,
         "Set the standalone course or journey title."
       );
     const format = config.format;
@@ -7639,33 +7689,36 @@ function check(root, contentDir = "docs") {
       add(
         "FC009",
         configFile,
-        "An HTML format is required for the public website.",
+        `An HTML format is required for the public website; format is ${describe(format)}.`,
         "Set format: html or add format.html."
       );
+  }
+  page(import_node_path.default.join(content, "index.qmd"), "website home");
+  const courses = children(import_node_path.default.join(content, "courses"), "course");
+  counts.courses = courses.length;
+  if (config) {
+    const kindAdvice = courses.length > 0 ? `Use freecampus.kind: ${courses.length === 1 ? "course" : "journey"} for the ${courses.length} detected course director${courses.length === 1 ? "y" : "ies"}.` : "Add the course directories first; use kind: course for one or kind: journey for two or more.";
     if (config.freecampus?.["schema-version"] !== 1)
       add(
         "FC010",
         configFile,
-        "freecampus.schema-version must be the integer 1.",
-        "Add freecampus: { schema-version: 1, kind: course } (or kind: journey)."
+        `freecampus.schema-version must be the integer 1; found ${describe(config.freecampus?.["schema-version"])}.`,
+        `Set schema-version: 1 inside the top-level freecampus mapping in _quarto.yml (not inside website and not quoted). ${kindAdvice}`
       );
     if (!["course", "journey"].includes(config.freecampus?.kind))
       add(
         "FC010",
         configFile,
-        "freecampus.kind must be course or journey.",
-        "Use course for one course, journey for two or more."
+        `freecampus.kind must be course or journey; found ${describe(config.freecampus?.kind)}.`,
+        kindAdvice
       );
   }
-  page(import_node_path.default.join(content, "index.qmd"));
-  const courses = children(import_node_path.default.join(content, "courses"), "course");
-  counts.courses = courses.length;
   if (config?.freecampus?.kind === "course" && courses.length !== 1)
     add(
       "FC010",
       configFile,
       `Standalone course mode requires exactly one course; found ${courses.length}.`,
-      "Use kind: journey when the repository groups multiple courses."
+      courses.length > 1 ? "Use kind: journey when the repository groups multiple courses." : "Add one complete course under courses/ in the selected Quarto source directory, or correct content-dir if it points to the wrong project."
     );
   if (config?.freecampus?.kind === "journey" && courses.length < 2)
     add(
@@ -7675,33 +7728,35 @@ function check(root, contentDir = "docs") {
       "Add the other course(s), or use kind: course for a standalone course."
     );
   for (const course of courses) {
-    page(import_node_path.default.join(course, "index.qmd"));
+    page(import_node_path.default.join(course, "index.qmd"), "course overview");
     if (import_node_fs.default.existsSync(import_node_path.default.join(course, "units")))
       add(
         "FC011",
         import_node_path.default.join(course, "units"),
-        "Legacy course/units layout bypasses milestones.",
-        "Move units into milestones/<milestone-id>/units/, add a milestone overview and challenge, and update navigation."
+        `Course ${JSON.stringify(import_node_path.default.basename(course))} has a legacy units/ directory outside any milestone. Every course must group its units into milestones.`,
+        `Group these units by learning outcome under ${slash(import_node_path.default.relative(root, course))}/milestones/<milestone-id>/units/. Add each milestone's index.qmd and challenge.qmd; update sidebar entries, relative links, catalogs, notebook paths, tests, and any affected progress IDs.`
       );
     for (const milestone of children(
       import_node_path.default.join(course, "milestones"),
       "milestone"
     )) {
       counts.milestones++;
-      page(import_node_path.default.join(milestone, "index.qmd"));
-      page(import_node_path.default.join(milestone, "challenge.qmd"));
+      page(import_node_path.default.join(milestone, "index.qmd"), "milestone overview");
+      page(import_node_path.default.join(milestone, "challenge.qmd"), "milestone challenge");
       for (const unit of children(import_node_path.default.join(milestone, "units"), "unit")) {
         counts.units++;
-        page(import_node_path.default.join(unit, "index.qmd"));
-        page(import_node_path.default.join(unit, "challenge.qmd"));
-        const lessons = entries(unit).filter(
+        page(import_node_path.default.join(unit, "index.qmd"), "unit overview");
+        page(import_node_path.default.join(unit, "challenge.qmd"), "unit challenge");
+        const unitEntries = entries(unit);
+        if (unitEntries === null) continue;
+        const lessons = unitEntries.filter(
           (entry) => !entry.name.startsWith("_") && !entry.name.startsWith(".") && entry.name.endsWith(".qmd") && !["index.qmd", "challenge.qmd"].includes(entry.name)
         );
         if (!lessons.length)
           add(
             "FC012",
             unit,
-            "Unit contains no lesson .qmd files.",
+            `Unit ${JSON.stringify(import_node_path.default.basename(unit))} contains no lesson .qmd files directly beside its overview and challenge.`,
             "Add at least one lesson directly beside index.qmd and challenge.qmd, for example explore-values.qmd."
           );
         for (const lesson of lessons) {
@@ -7714,7 +7769,7 @@ function check(root, contentDir = "docs") {
               "Use lowercase kebab-case with the .qmd extension."
             );
           counts.lessons++;
-          page(file);
+          page(file, "lesson");
         }
       }
     }
@@ -7787,11 +7842,34 @@ function check(root, contentDir = "docs") {
           "FC014",
           configFile,
           `Required page is absent from website.sidebar: ${slash(import_node_path.default.relative(content, file))}.`,
-          "Add this source path to the appropriate course, milestone, or unit section."
+          `Add "${slash(import_node_path.default.relative(content, file))}" to website.sidebar.contents or an appropriate nested section in _quarto.yml. Use the .qmd source path relative to the Quarto directory; a navbar or page-body link alone does not satisfy sidebar coverage.`
         );
     }
   }
   return { errors, counts };
+}
+
+// src/diagnostics.js
+var GUIDE_URL = "https://github.com/freecampus/freecampus-course-check/blob/main/TROUBLESHOOTING.md";
+var RULE_TITLES = Object.freeze({
+  FC000: "Action setup or runtime error",
+  FC001: "Invalid source path or symbolic link",
+  FC002: "Missing or unreadable source",
+  FC003: "Empty source content",
+  FC004: "Invalid YAML",
+  FC005: "Unclosed QMD front matter",
+  FC006: "Missing page title",
+  FC007: "Invalid course, milestone, unit, or lesson ID",
+  FC008: "Empty learning collection",
+  FC009: "Incomplete Quarto website configuration",
+  FC010: "Invalid schema or course/journey declaration",
+  FC011: "Legacy units need milestones",
+  FC012: "Unit has no lessons",
+  FC013: "Unsupported sidebar navigation",
+  FC014: "Required page is missing from the sidebar"
+});
+function diagnosticHelp(code) {
+  return Object.hasOwn(RULE_TITLES, code) ? { title: RULE_TITLES[code], url: `${GUIDE_URL}#${code.toLowerCase()}` } : { title: "Validation error", url: GUIDE_URL };
 }
 
 // src/main.js
@@ -7800,20 +7878,31 @@ var escapeProperty = (value) => escapeData(value).replaceAll(":", "%3A").replace
 var html = (value) => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 function report(result, root, env = process.env) {
   const valid = result.errors.length === 0;
+  const displayFile = (error) => env.GITHUB_ACTIONS === "true" ? import_node_path2.default.relative(
+    env.GITHUB_WORKSPACE || root,
+    import_node_path2.default.resolve(root, error.file)
+  ).split(import_node_path2.default.sep).join("/") : error.file;
   const summary = `FreeCampus structure: ${valid ? "PASS" : "FAIL"}; ${result.errors.length} error(s), ${result.counts.courses} course(s), ${result.counts.milestones} milestone(s), ${result.counts.units} unit(s), ${result.counts.lessons} lesson(s).`;
   console.log(summary);
   for (const error of result.errors) {
-    const message = `[${error.code}] ${error.message} Fix: ${error.fix}`;
+    const help = diagnosticHelp(error.code);
+    const title = `${error.code}: ${help.title}`;
+    const file = displayFile(error);
+    const message = [
+      `[${error.code}] ${help.title}`,
+      `File: ${JSON.stringify(file)}:${error.line}`,
+      `Problem: ${error.message}`,
+      `Fix: ${error.fix}`,
+      `Help: ${help.url}`
+    ].join("\n");
     if (env.GITHUB_ACTIONS === "true") {
-      const file = import_node_path2.default.relative(env.GITHUB_WORKSPACE || root, import_node_path2.default.resolve(root, error.file)).split(import_node_path2.default.sep).join("/");
       console.log(
-        `::error file=${escapeProperty(file)},line=${error.line},title=${escapeProperty(error.code)}::${escapeData(message)}`
+        `::error file=${escapeProperty(file)},line=${error.line},title=${escapeProperty(title)}::${escapeData(message)}`
       );
-    } else
-      console.log(
-        `- ${JSON.stringify(error.file)}:${error.line} ${message.replace(/[\r\n]/g, " ")}`
-      );
+    } else console.log(`- ${message.replace(/\r\n|\r|\n/g, "\n  ")}`);
   }
+  const discoveryNote = "Counts describe discovered structure. A missing parent directory can leave existing content uncounted; fix parent paths before interpreting zero counts.";
+  if (!valid) console.log(discoveryNote);
   if (env.GITHUB_OUTPUT)
     import_node_fs2.default.appendFileSync(
       env.GITHUB_OUTPUT,
@@ -7825,7 +7914,8 @@ course-count=${result.counts.courses}
   if (env.GITHUB_STEP_SUMMARY) {
     let details = "";
     for (const error of result.errors) {
-      const item = `<li><code>${html(error.code)} ${html(error.file)}:${error.line}</code>: ${html(error.message)}<br>Fix: ${html(error.fix)}</li>
+      const help = diagnosticHelp(error.code);
+      const item = `<li><strong>${html(error.code)}: ${html(help.title)}</strong><br><strong>File:</strong> <code>${html(displayFile(error))}:${error.line}</code><br><strong>Problem:</strong> ${html(error.message)}<br><strong>Fix:</strong> ${html(error.fix)}<br><a href="${html(help.url)}">Help and examples for ${html(error.code)}</a></li>
 `;
       if (Buffer.byteLength(details + item) > 8e5) {
         details += "<li>Additional errors are listed in the job log.</li>";
@@ -7838,6 +7928,10 @@ course-count=${result.counts.courses}
       `## FreeCampus course structure
 
 ${summary}
+
+${valid ? "" : `${discoveryNote}
+
+`}[Troubleshooting guide](${GUIDE_URL})
 
 <ul>
 ${details}</ul>
