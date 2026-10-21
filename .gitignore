@@ -10,7 +10,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+# dist/ is committed: the GitHub Action must run without npm install.
 downloads/
 eggs/
 .eggs/
@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# JavaScript action and Quarto template output
+node_modules/
+coverage/
+.quarto/
+_site/
+_book/
+.DS_Store

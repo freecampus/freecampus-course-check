@@ -1,0 +1,29 @@
+project:
+  type: website
+
+freecampus:
+  schema-version: 1
+  kind: journey
+
+website:
+  title: "Learning with Data"
+  sidebar:
+    contents:
+      - index.qmd
+      - courses/first-steps/index.qmd
+      - courses/first-steps/milestones/observe-data/index.qmd
+      - courses/first-steps/milestones/observe-data/units/observations/index.qmd
+      - courses/first-steps/milestones/observe-data/units/observations/notice-patterns.qmd
+      - courses/first-steps/milestones/observe-data/units/observations/challenge.qmd
+      - courses/first-steps/milestones/observe-data/challenge.qmd
+      - courses/next-steps/index.qmd
+      - courses/next-steps/milestones/share-findings/index.qmd
+      - courses/next-steps/milestones/share-findings/units/explanations/index.qmd
+      - courses/next-steps/milestones/share-findings/units/explanations/explain-patterns.qmd
+      - courses/next-steps/milestones/share-findings/units/explanations/challenge.qmd
+      - courses/next-steps/milestones/share-findings/challenge.qmd
+
+format: html
+
+execute:
+  eval: false

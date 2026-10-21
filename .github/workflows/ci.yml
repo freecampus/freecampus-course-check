@@ -1,0 +1,60 @@
+name: Test course structure action
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+      - name: Verify committed action bundle
+        shell: bash
+        run: |
+          git diff --exit-code -- dist
+          test -z "$(git ls-files --others --exclude-standard dist)"
+      - name: Run the packaged action on a standalone course
+        id: course
+        uses: ./
+        with:
+          path: templates/course
+      - name: Verify action outputs
+        shell: bash
+        env:
+          VALID: ${{ steps.course.outputs.valid }}
+          ERRORS: ${{ steps.course.outputs.error-count }}
+          COURSES: ${{ steps.course.outputs.course-count }}
+        run: |
+          test "$VALID" = true
+          test "$ERRORS" = 0
+          test "$COURSES" = 1
+      - name: Run the packaged action on a journey
+        uses: ./
+        with:
+          path: templates/journey
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2
+        with:
+          version: '1.8.27'
+      - run: quarto render templates/course/docs
+      - run: quarto render templates/journey/docs

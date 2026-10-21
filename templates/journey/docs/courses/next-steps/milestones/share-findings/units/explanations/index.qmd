@@ -1,0 +1,10 @@
+---
+title: "Explanations"
+---
+
+## What you will practice
+
+Separate a direct observation from an explanation. Read
+[explain patterns](explain-patterns.qmd), then attempt the [unit challenge](challenge.qmd).
+
+No prerequisites or computer are needed. Allow about 15 minutes for this unit.

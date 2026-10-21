@@ -1,0 +1,23 @@
+name: FreeCampus Course Structure Check
+author: FreeCampus
+description: Validate Quarto courses and journeys, including required milestones, units, lessons, challenges, and navigation.
+branding:
+  icon: book-open
+  color: blue
+inputs:
+  path:
+    description: Checked-out course repository directory, relative to GITHUB_WORKSPACE.
+    default: '.'
+  content-dir:
+    description: Quarto source directory, relative to path.
+    default: docs
+outputs:
+  valid:
+    description: Whether the repository satisfies the minimum structure (true or false).
+  error-count:
+    description: Total number of validation errors.
+  course-count:
+    description: Number of discovered course directories.
+runs:
+  using: node24
+  main: dist/index.cjs

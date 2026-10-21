@@ -1,0 +1,18 @@
+---
+title: "First Steps"
+---
+
+## Who this course is for
+
+Curious beginners who want to describe everyday observations. No software or
+computer is required; a phone or paper is enough.
+
+## What you will learn
+
+Describe a small set of observations and explain a pattern using evidence.
+
+Start with [the observe data milestone](milestones/observe-data/index.qmd).
+Follow its unit, then try the milestone challenge. Allow about 30 minutes.
+
+This community course is ungraded. Challenges provide practice and self-checks,
+not verified scores or certificates. This starter does not save progress.

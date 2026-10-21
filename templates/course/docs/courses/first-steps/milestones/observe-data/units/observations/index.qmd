@@ -1,0 +1,10 @@
+---
+title: "Observations"
+---
+
+## What you will practice
+
+Separate a direct observation from an explanation. Read
+[notice patterns](notice-patterns.qmd), then attempt the [unit challenge](challenge.qmd).
+
+No prerequisites or computer are needed. Allow about 15 minutes for this unit.
